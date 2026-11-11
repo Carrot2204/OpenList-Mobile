@@ -104,7 +104,7 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             if (pro["KEY_PATH"] != null && pro["KEY_PASSWORD"] != null && 
                 pro["ALIAS_NAME"] != null && pro["ALIAS_PASSWORD"] != null) {
-                signingConfig signingConfigs.release
+                signingConfig signingConfigs.debug
             }
         }
 
