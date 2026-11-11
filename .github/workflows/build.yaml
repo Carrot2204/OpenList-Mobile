@@ -11,10 +11,6 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   version:
     name: Get OpenList Version Information
@@ -50,7 +46,8 @@ jobs:
     needs: [version, libs]
     runs-on: ubuntu-latest
     env:
-      release_output: "${{ github.workspace }}/build/app/outputs/apk/release"
+      # 注意这里：Debug 包的输出路径跟 Release 不同
+      debug_output: "${{ github.workspace }}/build/app/outputs/flutter-apk"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,13 +72,15 @@ jobs:
         with:
           flutter-version: '3.47.9'
 
-      - name: Build Release APK (arm64 only)
+      - name: Build Debug APK
         env:
           BUILD_VERSION_NAME: ${{ needs.version.outputs.version_name }}
-        run: flutter build apk --release --split-per-abi
+        # 打包 Debug 版本，自带系统签名，绝对能装
+        run: flutter build apk --debug --split-per-abi
 
       - name: Upload App To Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "OpenList-Mobile-${{ needs.version.outputs.version_name }}_arm64"
-          path: "${{ env.release_output }}/*arm64-v8a*.apk"
+          name: "OpenList-Mobile-${{ needs.version.outputs.version_name }}_arm64_debug"
+          # 挑出带有 arm64-v8a 的 Debug 包上传
+          path: "${{ env.debug_output }}/*arm64-v8a*.apk"
