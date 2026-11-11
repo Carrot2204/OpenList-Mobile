@@ -71,9 +71,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The binding only depends on openlist-lib, this workflow, the upstream
-      # tags and the Go toolchain, so an exact key match is safe to reuse
-      # (tests included: a cache is only saved after they passed).
       - name: Restore OpenList Android AAR
         id: cache
         if: inputs.use_cache
@@ -111,8 +108,6 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
 
-      # Tests run after init_gomobile.sh because its `go get` calls resolve
-      # the go.mod edits made by init_openlist.sh; before that go.mod is stale.
       - name: Test and Build OpenList Android AAR
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
@@ -141,63 +136,4 @@ jobs:
         with:
           name: "openlist-android-aar"
           path: "${{ github.workspace }}/android/app/libs/*.aar"
-          retention-days: 50
-
-  build_ios:
-    name: Build OpenList iOS Framework
-    needs: [version]
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-
-      - name: Restore OpenList iOS Framework
-        id: cache
-        if: inputs.use_cache
-        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: ${{ github.workspace }}/ios/Frameworks
-          key: openlist-xcframework-go${{ needs.version.outputs.go_version }}-${{ needs.version.outputs.openlist_version }}-${{ needs.version.outputs.openlist_web_version }}-${{ hashFiles('openlist-lib/**', '.github/workflows/build_openlist.yaml') }}
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
-        if: steps.cache.outputs.cache-hit != 'true'
-        with:
-          go-version: ${{ needs.version.outputs.go_version }}
-
-      - name: Download OpenList Source Code
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          cd $GITHUB_WORKSPACE/openlist-lib/scripts
-          chmod +x *.sh
-          ./init_openlist.sh
-          ./init_web_ios.sh
-
-      - name: Build OpenList iOS Framework
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          cd $GITHUB_WORKSPACE/openlist-lib/scripts
-          chmod +x *.sh
-          ./init_gomobile.sh
-          ./gobind_ios.sh
-        env:
-          OPENLIST_VERSION: ${{ needs.version.outputs.openlist_version }}
-          OPENLIST_WEB_VERSION: ${{ needs.version.outputs.openlist_web_version }}
-          OPENLIST_BUILT_AT: ${{ needs.version.outputs.openlist_built_at }}
-          OPENLIST_GIT_COMMIT: ${{ needs.version.outputs.openlist_git_commit }}
-          OPENLIST_GIT_AUTHOR: The OpenList Projects Contributors <noreply@oplist.org>
-
-      - name: Save OpenList iOS Framework
-        if: steps.cache.outcome == 'success' && steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
-        with:
-          path: ${{ github.workspace }}/ios/Frameworks
-          key: ${{ steps.cache.outputs.cache-primary-key }}
-
-      - name: Upload OpenList iOS Framework
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
-        with:
-          name: "openlist-ios-xcframework"
-          path: "${{ github.workspace }}/ios/Frameworks/*.xcframework"
           retention-days: 50
